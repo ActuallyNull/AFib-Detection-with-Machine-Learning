@@ -1,8 +1,11 @@
-from sklearn.model_selection import train_test_split
 import wfdb
 import numpy as np
 import os
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from scipy.signal import butter, filtfilt, resample
+from imblearn.over_sampling import SMOTE
+from collections import Counter
 
 dataset_folders = ["mit-bih", "training2017/training2017"]
 records = []
@@ -13,14 +16,26 @@ duration = 10 #seconds
 X = []
 y = []
 
+def butter_bandpass_filter(signal, fs, low_pass=0.5, high_pass=50, order=5):
+    nyq = 0.5 * fs
+    low = low_pass / nyq
+    high = high_pass / nyq
+    b,a = butter(order, [low, high], btype='band')
+    return filtfilt(b, a, signal)
+
+def smote_resampling(X, y):
+    smote = SMOTE(random_state=42)
+    X_resampled, y_resampled = smote.fit_resample(X, y)
+    return X_resampled, y_resampled
+
+def signal_resampling(signal, target_length):
+    resample(signal, target_length)
+
 def standardise_dataset(X):
     X_scaled = np.array([(x - np.mean(x)) / np.std(x) for x in X])
     return X_scaled
 
-from sklearn.preprocessing import MinMaxScaler
-
 def normalise_dataset(X):
-    # Reshape X to 2D if needed (n_samples, n_features)
     scaler = MinMaxScaler()
     X_norm = scaler.fit_transform(X)
     return X_norm
@@ -63,12 +78,17 @@ def load_physionet_dataset(physionet_path, reference_file_path, X, y):
     y = np.array(y)
     return X, y
 
-def process_physionet_dataset(physionet_path, reference_file_path, X, y): #X and y should be empty lists
+def preprocess_dataset(physionet_path, reference_file_path, X, y, fs=300): #X and y should be empty lists
 
     X, y = load_physionet_dataset(physionet_path, reference_file_path, X, y)
-    X = standardise_dataset(X)
-    X = normalise_dataset(X)
-    return X, y
+    X_filtered = np.array([butter_bandpass_filter(x, fs=fs) for x in X])
 
-X, y = process_physionet_dataset("training2017/training2017", "training2017/training2017/REFERENCE.csv", X, y)
+    #X_standardised = standardise_dataset(X_filtered)
+    X_processed = normalise_dataset(X_filtered) # since this should be a dcnn, no standardisation needed
+    y_processed = y
 
+    # Apply SMOTE to balance the dataset
+    X_balanced, y_balanced = smote_resampling(X_processed, y_processed)
+    return X_balanced, y_balanced
+
+X_processed, y_processed = preprocess_dataset("training2017/training2017", "training2017/training2017/REFERENCE.csv", X, y)

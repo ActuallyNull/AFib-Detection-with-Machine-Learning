@@ -3,12 +3,12 @@ import neurokit2 as nk
 import numpy as np
 import pandas as pd
 
-record = wfdb.rdrecord("mit-bih/100")
+record = wfdb.rdrecord("training2017/training2017/A00001")
 fs = record.fs
-ecg_signal = record.p_signal[:, 0]
+#ecg_signal = record.p_signal[:, 0]
 duration = 5
 samples = fs * duration
-print(record.comments)
+print(fs)
 
 #_, rpeaks = nk.ecg_peaks(ecg_signal, sampling_rate=fs)
 #plot = nk.events_plot(rpeaks['ECG_R_Peaks'][:5], ecg_signal[:6*fs])
