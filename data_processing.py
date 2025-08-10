@@ -40,4 +40,13 @@ def load_physionet_dataset(physionet_path, reference_file_path):
     for label in labels:
         y.append(label)
 
-load_physionet_dataset("training2017\\training2017", "training2017\\training2017\\REFERENCE.csv")
+""" def load_mitbih_dataset(mitbih_path):
+    mitbih_records = []
+
+    #loading data
+    for file in os.listdir(mitbih_path):
+        if file.endswith(".hea"):
+            record_name = file[:-4]
+            mitbih_records.append(record_name) """
+
+    
