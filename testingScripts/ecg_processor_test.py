@@ -8,7 +8,8 @@ fs = record.fs
 ecg_signal = record.p_signal[:, 0]
 duration = 5
 samples = fs * duration
+print(record.comments)
 
-_, rpeaks = nk.ecg_peaks(ecg_signal, sampling_rate=fs)
-plot = nk.events_plot(rpeaks['ECG_R_Peaks'][:5], ecg_signal[:6*fs])
-plot.savefig("ecg.png")
+#_, rpeaks = nk.ecg_peaks(ecg_signal, sampling_rate=fs)
+#plot = nk.events_plot(rpeaks['ECG_R_Peaks'][:5], ecg_signal[:6*fs])
+#plot.savefig("ecg.png")
