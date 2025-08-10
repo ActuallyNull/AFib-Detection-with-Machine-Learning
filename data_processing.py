@@ -6,6 +6,8 @@ from sklearn.preprocessing import MinMaxScaler
 from scipy.signal import butter, filtfilt, resample
 from imblearn.over_sampling import SMOTE
 from collections import Counter
+from ecg_augmentor import ECG_Augmentor 
+
 
 dataset_folders = ["mit-bih", "training2017/training2017"]
 records = []
@@ -80,11 +82,16 @@ def load_physionet_dataset(physionet_path, reference_file_path, X, y):
 
 def preprocess_dataset(physionet_path, reference_file_path, X, y, fs=300): #X and y should be empty lists
 
+    augmentor = ECG_Augmentor(fs=fs)
+
     X, y = load_physionet_dataset(physionet_path, reference_file_path, X, y)
     X_filtered = np.array([butter_bandpass_filter(x, fs=fs) for x in X])
 
-    #X_standardised = standardise_dataset(X_filtered)
-    X_processed = normalise_dataset(X_filtered) # since this should be a dcnn, no standardisation needed
+    # Augment each signal (single-signal augmentation)
+    X_augmented = np.array([augmentor.augment(x) for x in X_filtered])
+
+    #X_standardised = standardise_dataset(X_augmented)
+    X_processed = normalise_dataset(X_augmented) # since this should be a dcnn, no standardisation needed
     y_processed = y
 
     # Apply SMOTE to balance the dataset
