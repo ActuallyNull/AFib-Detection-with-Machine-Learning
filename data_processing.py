@@ -97,5 +97,3 @@ def preprocess_dataset(physionet_path, reference_file_path, X, y, fs=300): #X an
     # Apply SMOTE to balance the dataset
     X_balanced, y_balanced = smote_resampling(X_processed, y_processed)
     return X_balanced, y_balanced
-
-X_processed, y_processed = preprocess_dataset("training2017/training2017", "training2017/training2017/REFERENCE.csv", X, y)
