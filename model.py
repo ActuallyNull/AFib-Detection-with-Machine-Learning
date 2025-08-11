@@ -1,9 +1,16 @@
 import tensorflow as tf
 from keras import layers
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from data_preperation import create_train_val_test_splits
 from sklearn.metrics import confusion_matrix, classification_report
 
 X_train, y_train, X_val, y_val, X_test, y_test = create_train_val_test_splits()
+
+callback = [
+    EarlyStopping(monitor='val_loss', patience=7, verbose=1, restore_best_weights=True),
+    ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-6, verbose=1)
+]
+
 
 model = tf.keras.Sequential([
     layers.Conv1D(32, kernel_size=5),
@@ -33,7 +40,14 @@ model.compile(optimizer='adam',
               loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
-model.fit(X_train, y_train, epochs=10, batch_size=32)
+model.fit(X_train, 
+          y_train, 
+          epochs=100, 
+          batch_size=64,
+          callbacks=callback,
+          )
+
+print(model.summary)
 
 test_loss, test_acc = model.evaluate(X_test, y_test)
 print(f"Test accuracy: {test_acc:.4f}")

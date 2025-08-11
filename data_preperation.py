@@ -1,10 +1,6 @@
 from data_processing import preprocess_dataset
-import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-
-
-
 
 def create_train_val_test_splits():
 
