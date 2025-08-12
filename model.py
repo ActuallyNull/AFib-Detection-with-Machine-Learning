@@ -1,5 +1,5 @@
 import tensorflow as tf
-from keras import layers
+from keras import layers, models
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from data_preperation import create_train_val_test_splits
 from sklearn.metrics import confusion_matrix, classification_report
@@ -14,14 +14,37 @@ callback = [
     ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-6, verbose=1)
 ]
 
-model = tf.keras.Sequential([
-    layers.Conv1D(60, 1),
-    layers.Conv1D(50, 1),
-    layers.Conv1D(40, 1),
-    layers.GlobalAveragePooling1D(),
-    layers.Dense(20, activation='relu'),
-    layers.Dense(3, activation='softmax')
-])
+def ecg_cnn(input_length, num_classes=3): # 0: afib, 1: normal, 2: other arrhythmia
+    inputs = layers.Input(shape=(input_length, 1))
+
+    x = layers.Conv1D(32, kernel_size=15, padding='same')(inputs)
+    x = layers.BatchNormalization()(x)
+    x = layers.ReLU()(x)
+    x = layers.MaxPooling1D(pool_size=2)(x)
+
+    x = layers.Conv1D(64, kernel_size=11, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.ReLU()(x)
+    x = layers.MaxPooling1D(pool_size=2)(x)
+
+    x = layers.Conv1D(128, kernel_size=7, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.ReLU()(x)
+    x = layers.MaxPooling1D(pool_size=2)(x)
+
+    x = layers.Conv1D(256, kernel_size=5, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.ReLU()(x)
+    x = layers.GlobalAveragePooling1D()(x)
+
+    x = layers.Dense(64, activation='relu')(x)
+    x = layers.Dropout(0.5)(x)
+    outputs = layers.Dense(num_classes, activation='softmax')(x)
+
+    model = models.Model(inputs, outputs)
+    return model
+
+model = ecg_cnn(input_length=3000) # 300 hz for 10 sec = 3000 samples
 
 model.compile(optimizer='adam',
               loss='sparse_categorical_crossentropy',
@@ -30,11 +53,9 @@ model.compile(optimizer='adam',
 model.fit(X_train, 
           y_train, 
           epochs=100, 
-          batch_size=100,
+          batch_size=64,
           callbacks=callback,
           )
-
-print(model.summary)
 
 test_loss, test_acc = model.evaluate(X_test, y_test)
 print(f"Test accuracy: {test_acc:.4f}")
