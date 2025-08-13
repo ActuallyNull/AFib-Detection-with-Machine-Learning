@@ -8,9 +8,6 @@ from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 from sklearn.metrics import RocCurveDisplay
 from sklearn.preprocessing import label_binarize
-from sklearn.utils.class_weight import compute_class_weight
-from keras import regularizers
-import numpy as np
 
 X_train, y_train, X_val, y_val, X_test, y_test, le = create_train_val_test_splits()
 augmentor = ECG_Augmentor(fs=300)
@@ -33,27 +30,23 @@ def ecg_cnn(input_length, num_classes=3): # 0: afib, 1: normal, 2: other arrhyth
     x = layers.BatchNormalization()(x)
     x = layers.ReLU()(x)
     x = layers.MaxPooling1D(pool_size=2)(x)
-    x = layers.Dropout(0.2)(x)
 
     x = layers.Conv1D(64, kernel_size=11, padding='same')(x)
     x = layers.BatchNormalization()(x)
     x = layers.ReLU()(x)
     x = layers.MaxPooling1D(pool_size=2)(x)
-    x = layers.Dropout(0.2)(x)
 
     x = layers.Conv1D(128, kernel_size=7, padding='same')(x)
     x = layers.BatchNormalization()(x)
     x = layers.ReLU()(x)
     x = layers.MaxPooling1D(pool_size=2)(x)
-    x = layers.Dropout(0.2)(x)
 
     x = layers.Conv1D(256, kernel_size=5, padding='same')(x)
     x = layers.BatchNormalization()(x)
     x = layers.ReLU()(x)
     x = layers.GlobalAveragePooling1D()(x)
-    x = layers.Dropout(0.2)(x)
 
-    x = layers.Dense(64, activation='relu', kernel_regularizer=regularizers.l2(0.001))(x)
+    x = layers.Dense(64, activation='relu')(x)
     x = layers.Dropout(0.5)(x)
     outputs = layers.Dense(num_classes, activation='softmax')(x)
 
@@ -69,7 +62,6 @@ model.compile(optimizer='adam',
 model.fit(train_gen,
           epochs=100,
           callbacks=callback,
-          class_weight=class_weights
           )
 
 test_loss, test_acc = model.evaluate(X_test, y_test)
