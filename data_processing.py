@@ -3,9 +3,12 @@ import numpy as np
 import os
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-from scipy.signal import butter, filtfilt, resample
+from scipy.signal import butter, filtfilt
 from imblearn.over_sampling import SMOTE
 from ecg_augmentor import ECG_Augmentor
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+import gc
 
 physionet_label_map = {'N': "Normal", 'A': "AFib", 'O': "Other Arrythmia"}
 duration = 10 # seconds
@@ -70,11 +73,47 @@ def load_physionet_dataset(physionet_path, reference_file_path, X, y):
     return X, y
 
 def preprocess_dataset(physionet_path, reference_file_path, X, y, fs=300):
-    augmentor = ECG_Augmentor(fs=fs)
     X, y = load_physionet_dataset(physionet_path, reference_file_path, X, y)
     X_filtered = np.array([butter_bandpass_filter(x, fs=fs) for x in X])
-    X_augmented = np.array([augmentor.augment(x) for x in X_filtered])
-    X_processed = normalise_dataset(X_augmented) # For DCNN, normalization is preferred
+    X_processed = normalise_dataset(X_filtered) # For DCNN, normalization is preferred
     y_processed = y
     X_balanced, y_balanced = smote_resampling(X_processed, y_processed)
     return X_balanced, y_balanced
+
+def create_train_val_test_splits(fs=300):
+    X = []
+    y = []
+    augmentor = ECG_Augmentor(fs=fs)
+    # Load and preprocess only, avoid unnecessary copies
+    X_processed, y_processed = preprocess_dataset(
+        "training2017/training2017",
+        "training2017/training2017/REFERENCE.csv",
+        X, y
+    )
+    # Use float32 to save memory
+    X_processed = X_processed.astype(np.float32)
+    # Reshape for CNN
+    X_cnn = np.expand_dims(X_processed, axis=-1)
+    # Encode labels
+    le = LabelEncoder()
+    y_cnn = le.fit_transform(y_processed)
+    # Split data
+    X_train, X_temp, y_train, y_temp = train_test_split(
+        X_cnn, y_cnn, test_size=0.3, random_state=42, stratify=y_cnn
+    )
+    X_val, X_test, y_val, y_test = train_test_split(
+        X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
+    )
+    # Augment only training data, process in batches to save RAM
+    batch_size = 500  # Adjust as needed for your RAM
+    X_train_aug = []
+    for i in range(0, len(X_train), batch_size):
+        batch = X_train[i:i+batch_size]
+        batch_aug = [augmentor.augment(x.squeeze()) for x in batch]
+        batch_aug = np.expand_dims(np.array(batch_aug, dtype=np.float32), axis=-1)
+        X_train_aug.append(batch_aug)
+    X_train_aug = np.concatenate(X_train_aug, axis=0)
+    # Clean up memory
+    del X, y, X_processed, X_cnn, X_train, X_temp, batch, batch_aug
+    gc.collect()
+    return X_train_aug, y_train, X_val, y_val, X_test, y_test, le
