@@ -2,6 +2,8 @@ import tensorflow as tf
 from keras import layers, models
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from data_processing import create_train_val_test_splits
+from data_generator import ECGDataGenerator
+from data_augmentor import ECG_Augmentor
 from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 from sklearn.metrics import RocCurveDisplay
@@ -12,6 +14,10 @@ from focal_loss import SparseCategoricalFocalLoss
 import numpy as np
 
 X_train, y_train, X_val, y_val, X_test, y_test, le = create_train_val_test_splits()
+augmentor = ECG_Augmentor(fs=300)
+
+train_gen = ECGDataGenerator(X_train, y_train, batch_size=64, augmentor=augmentor, shuffle=True)
+val_gen = ECGDataGenerator(X_val, y_val, batch_size=64, augmentor=None, shuffle=False)
 
 weights = compute_class_weight('balanced', classes=np.array([0,1,2]), y=y_train)
 class_weights = dict(enumerate(weights))
@@ -73,13 +79,11 @@ model.compile(optimizer='adam',
               loss=SparseCategoricalFocalLoss(gamma=2),
               metrics=['accuracy'])
 
-model.fit(X_train, 
-          y_train, 
-          epochs=100, 
-          batch_size=64,
+model.fit(train_gen,
+          epochs=100,
           callbacks=callback,
           class_weight=class_weights,
-          validation_data=(X_val, y_val)
+          validation_data=val_gen
           )
 
 test_loss, test_acc = model.evaluate(X_test, y_test)
