@@ -75,15 +75,16 @@ def load_physionet_dataset(physionet_path, reference_file_path, X, y):
 def preprocess_dataset(physionet_path, reference_file_path, X, y, fs=300):
     X, y = load_physionet_dataset(physionet_path, reference_file_path, X, y)
     X_filtered = np.array([butter_bandpass_filter(x, fs=fs) for x in X])
-    X_processed = normalise_dataset(X_filtered) # For DCNN, normalization is preferred
+    # Do not normalise or augment here!
     y_processed = y
-    X_balanced, y_balanced = smote_resampling(X_processed, y_processed)
+    X_balanced, y_balanced = smote_resampling(X_filtered, y_processed)
     return X_balanced, y_balanced
 
 def create_train_val_test_splits(fs=300):
     X = []
     y = []
-    augmentor = ECG_Augmentor(fs=fs)
+    # Use strong augmentations for training data
+    augmentor = ECG_Augmentor(fs=fs, strong=True)
     # Load and preprocess only, avoid unnecessary copies
     X_processed, y_processed = preprocess_dataset(
         "training2017/training2017",
@@ -94,7 +95,6 @@ def create_train_val_test_splits(fs=300):
     X_processed = X_processed.astype(np.float32)
     # Reshape for CNN
     X_cnn = np.expand_dims(X_processed, axis=-1)
-    # Encode labels
     le = LabelEncoder()
     y_cnn = le.fit_transform(y_processed)
     # Split data
@@ -104,12 +104,20 @@ def create_train_val_test_splits(fs=300):
     X_val, X_test, y_val, y_test = train_test_split(
         X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
     )
-    # Augment only training data, process in batches to save RAM
     batch_size = 500  # Adjust as needed for your RAM
     X_train_aug = []
     for i in range(0, len(X_train), batch_size):
         batch = X_train[i:i+batch_size]
-        batch_aug = [augmentor.augment(x.squeeze()) for x in batch]
+        # For strong augmentation, optionally mixup with other signals in the batch
+        batch_aug = []
+        for x in batch:
+            if augmentor.strong and np.random.rand() < 0.2 and len(batch) > 1:
+                # Mixup with another random signal in the batch
+                idx = np.random.choice([j for j in range(len(batch)) if not np.allclose(batch[j], x)])
+                x_aug = augmentor.augment(x.squeeze(), mix_signal=batch[idx].squeeze())
+            else:
+                x_aug = augmentor.augment(x.squeeze())
+            batch_aug.append(x_aug)
         batch_aug = np.expand_dims(np.array(batch_aug, dtype=np.float32), axis=-1)
         X_train_aug.append(batch_aug)
     X_train_aug = np.concatenate(X_train_aug, axis=0)

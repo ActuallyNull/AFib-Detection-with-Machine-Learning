@@ -10,8 +10,17 @@ from sklearn.utils.class_weight import compute_class_weight
 from keras import regularizers
 from focal_loss import SparseCategoricalFocalLoss
 import numpy as np
+from data_generator import ECGDataGenerator
+from data_augmentor import ECG_Augmentor
 
 X_train, y_train, X_val, y_val, X_test, y_test, le = create_train_val_test_splits()
+
+train_augmentor = ECG_Augmentor(fs=300, strong=True)
+train_gen = ECGDataGenerator(X_train, y_train, batch_size=64, augmentor=train_augmentor, shuffle=True)
+val_gen = ECGDataGenerator(X_val, y_val, batch_size=64, augmentor=None, shuffle=False)
+
+unique, counts = np.unique(y_train, return_counts=True)
+print("Class distribution in y_train:", dict(zip(unique, counts)))
 
 weights = compute_class_weight('balanced', classes=np.array([0,1,2]), y=y_train)
 class_weights = dict(enumerate(weights))
@@ -73,19 +82,19 @@ model.compile(optimizer='adam',
               loss=SparseCategoricalFocalLoss(gamma=2),
               metrics=['accuracy'])
 
-model.fit(X_train, 
-          y_train, 
-          epochs=100, 
-          batch_size=64,
-          callbacks=callback,
-          class_weight=class_weights,
-          validation_data=(X_val, y_val)
-          )
+model.fit(
+    train_gen,
+    epochs=100,
+    callbacks=callback,
+    class_weight=class_weights,
+    validation_data=val_gen
+)
 
-test_loss, test_acc = model.evaluate(X_test, y_test)
+test_gen = ECGDataGenerator(X_test, y_test, batch_size=64, augmentor=None, shuffle=False)
+test_loss, test_acc = model.evaluate(test_gen)
 print(f"Test accuracy: {test_acc:.4f}")
 
-y_pred = model.predict(X_test)
+y_pred = model.predict(test_gen)
 y_pred_classes = y_pred.argmax(axis=1)
 
 print("Confusion Matrix:")
