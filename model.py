@@ -24,6 +24,7 @@ print("Class distribution in y_train:", dict(zip(unique, counts)))
 
 weights = compute_class_weight('balanced', classes=np.array([0,1,2]), y=y_train)
 class_weights = dict(enumerate(weights))
+class_weights[2] *= 1.3 # give more weight to other arrhythmia since it gets misclassfied a lot more
 
 callback = [
     EarlyStopping(monitor='val_loss', patience=7, verbose=1, restore_best_weights=True),

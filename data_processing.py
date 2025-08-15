@@ -80,6 +80,7 @@ def preprocess_dataset(physionet_path, reference_file_path, X, y, fs=300):
     X_balanced, y_balanced = smote_resampling(X_filtered, y_processed)
     return X_balanced, y_balanced
 
+
 def create_train_val_test_splits(fs=300):
     X = []
     y = []
@@ -104,11 +105,12 @@ def create_train_val_test_splits(fs=300):
     X_val, X_test, y_val, y_test = train_test_split(
         X_temp, y_temp, test_size=0.5, random_state=42, stratify=y_temp
     )
+    
+    # normal augmentation
     batch_size = 500  # Adjust as needed for your RAM
     X_train_aug = []
     for i in range(0, len(X_train), batch_size):
         batch = X_train[i:i+batch_size]
-        # For strong augmentation, optionally mixup with other signals in the batch
         batch_aug = []
         for x in batch:
             if augmentor.strong and np.random.rand() < 0.2 and len(batch) > 1:
@@ -121,7 +123,26 @@ def create_train_val_test_splits(fs=300):
         batch_aug = np.expand_dims(np.array(batch_aug, dtype=np.float32), axis=-1)
         X_train_aug.append(batch_aug)
     X_train_aug = np.concatenate(X_train_aug, axis=0)
+
+    # extra augmentation for class 2 cause it has more trouble
+    other_class_idx = le.transform(["Other Arrythmia"])[0]
+    other_mask = (y_train == other_class_idx)
+    X_other = X_train[other_mask]
+    y_other = y_train[other_mask]
+
+    extra_augmented = []
+    for x in X_other:
+        for _ in range(3):  # triple augmentations for more variability
+            extra_augmented.append(augmentor.augment(x.squeeze()))
+    extra_augmented = np.expand_dims(np.array(extra_augmented, dtype=np.float32), axis=-1)
+    y_other_extra = np.full(len(extra_augmented), other_class_idx)
+
+    # Append extra augmented "Other Arrhythmia" samples
+    X_train_aug = np.concatenate([X_train_aug, extra_augmented], axis=0)
+    y_train = np.concatenate([y_train, y_other_extra], axis=0)
+
     # Clean up memory
     del X, y, X_processed, X_cnn, X_train, X_temp, batch, batch_aug
     gc.collect()
+
     return X_train_aug, y_train, X_val, y_val, X_test, y_test, le
