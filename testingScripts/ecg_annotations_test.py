@@ -1,6 +1,8 @@
 import wfdb
 
-annotations = wfdb.rdann("mit-bih\\102", "atr")
+annotations = wfdb.rdheader("training2017/training2017/A00038", "hea")
 
-with open('testingScripts/annotations.txt', 'w') as ann:
-    ann.write(str(annotations.aux_note))
+record = wfdb.rdrecord("training2017/training2017/A00038")
+
+
+print(annotations)

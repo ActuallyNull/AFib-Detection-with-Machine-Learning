@@ -2,3 +2,9 @@ mit-bih
 mit-bih-afib
 training2017
 __pycache__
+frontend/node_modules
+.venv
+backend/env.example
+frontend/env.example
+frontend/nginx.conf
+node_modules
