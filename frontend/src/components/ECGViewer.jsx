@@ -12,7 +12,9 @@ import {
   Save,
   X,
   Heart,
-  Activity
+  Activity,
+  Undo,
+  Redo
 } from 'lucide-react'
 import { useECG } from '../context/ECGContext'
 import { ecgAPI } from '../services/api'
@@ -39,6 +41,8 @@ const ECGViewer = () => {
   })
   const [annotationMode, setAnnotationMode] = useState(false)
   const [canvas, setCanvas] = useState(null)
+  const [canvasHistory, setCanvasHistory] = useState([]);
+  const [canvasRedoHistory, setCanvasRedoHistory] = useState([]);
   const plotRef = useRef(null)
   const canvasRef = useRef(null)
 
@@ -77,24 +81,35 @@ const ECGViewer = () => {
 
   useEffect(() => {
     if (annotationMode && canvasRef.current && ecgData) {
-      // Initialize Fabric.js canvas for annotations
       const fabricCanvas = new fabric.Canvas(canvasRef.current, {
         width: 800,
         height: 400,
         backgroundColor: 'transparent'
-      })
-      
-      fabricCanvas.on('object:added', (e) => {
-        console.log('Annotation added:', e.target)
-      })
+      });
 
-      setCanvas(fabricCanvas)
+      const saveState = () => {
+        const canvasState = fabricCanvas.toJSON();
+        setCanvasHistory(prev => [...prev, canvasState]);
+        setCanvasRedoHistory([]); 
+      };
+
+      fabricCanvas.on({
+        'object:added': saveState,
+        'object:modified': saveState,
+        'object:removed': saveState
+      });
+
+      setCanvas(fabricCanvas);
+      setCanvasHistory([fabricCanvas.toJSON()]);
 
       return () => {
-        fabricCanvas.dispose()
-      }
+        fabricCanvas.off('object:added');
+        fabricCanvas.off('object:modified');
+        fabricCanvas.off('object:removed');
+        fabricCanvas.dispose();
+      };
     }
-  }, [annotationMode, ecgData])
+  }, [annotationMode, ecgData]);
 
   const handleZoomIn = () => {
     if (plotRef.current) {
@@ -161,6 +176,33 @@ const ECGViewer = () => {
     canvas.add(annotation)
     canvas.renderAll()
   }
+
+  const handleUndo = () => {
+    if (canvasHistory.length > 1) {
+      const lastState = canvasHistory[canvasHistory.length - 1];
+      const prevState = canvasHistory[canvasHistory.length - 2];
+      
+      setCanvasRedoHistory(prev => [lastState, ...prev]);
+      
+      canvas.loadFromJSON(prevState, () => {
+        canvas.renderAll();
+        setCanvasHistory(prev => prev.slice(0, prev.length - 1));
+      });
+    }
+  };
+
+  const handleRedo = () => {
+    if (canvasRedoHistory.length > 0) {
+      const nextState = canvasRedoHistory[0];
+      
+      setCanvasHistory(prev => [...prev, nextState]);
+      
+      canvas.loadFromJSON(nextState, () => {
+        canvas.renderAll();
+        setCanvasRedoHistory(prev => prev.slice(1));
+      });
+    }
+  };
 
   const saveAnnotations = () => {
     if (!canvas) return
@@ -337,6 +379,22 @@ const ECGViewer = () => {
                       <Save className="h-3 w-3 inline mr-1" />
                       Save
                     </button>
+                    <button
+                      onClick={handleUndo}
+                      className="px-3 py-1 bg-gray-500 text-white rounded text-sm"
+                      disabled={canvasHistory.length <= 1}
+                    >
+                      <Undo className="h-3 w-3 inline mr-1" />
+                      Undo
+                    </button>
+                    <button
+                      onClick={handleRedo}
+                      className="px-3 py-1 bg-gray-500 text-white rounded text-sm"
+                      disabled={canvasRedoHistory.length === 0}
+                    >
+                      <Redo className="h-3 w-3 inline mr-1" />
+                      Redo
+                    </button>
                   </div>
                 )}
                 
@@ -452,4 +510,3 @@ const ECGViewer = () => {
 }
 
 export default ECGViewer
-

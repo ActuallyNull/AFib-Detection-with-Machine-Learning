@@ -1,52 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import axios from 'axios';
 import Header from './components/Header';
-import ECGUploader from './components/ECGUploader';
-import ECGDisplayCard from './components/ECGDisplayCard';
+import PredictionPage from './components/PredictionPage';
 import AdminPanel from './components/AdminPanel';
+import ECGImageViewer from './components/ECGImageViewer'; // Import ECGImageViewer
+import ECGSelector from './components/ECGSelector';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ECGProvider } from './context/ECGContext';
-
-const MainPage = () => {
-    const [showcaseECGs, setShowcaseECGs] = useState([]);
-
-    useEffect(() => {
-        const fetchShowcaseECGs = async () => {
-            try {
-                const response = await axios.get('http://localhost:8000/showcase-ecgs');
-                setShowcaseECGs(response.data);
-            } catch (error) {
-                console.error('Error fetching showcase ECGs:', error);
-            }
-        };
-        fetchShowcaseECGs();
-    }, []);
-
-    return (
-        <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                {showcaseECGs.slice(0, 3).map((ecg) => (
-                    <ECGDisplayCard key={ecg.filename} ecg={ecg} />
-                ))}
-            </div>
-            <ECGUploader />
-        </>
-    );
-};
+import { ThemeProvider } from './context/ThemeContext';
 
 function App() {
     return (
-        <ECGProvider>
-            <div className="min-h-screen bg-gray-50">
-                <Header />
-                <main className="container mx-auto px-4 py-8">
-                    <Routes>
-                        <Route path="/" element={<MainPage />} />
-                        <Route path="/admin" element={<AdminPanel />} />
-                    </Routes>
-                </main>
-            </div>
-        </ECGProvider>
+        <ThemeProvider>
+            <DndProvider backend={HTML5Backend}>
+                <ECGProvider>
+                    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+                        <Header />
+                        <main className="container mx-auto px-4 py-8">
+                            <Routes>
+                                <Route path="/" element={<PredictionPage />} />
+                                <Route path="/admin" element={<AdminPanel />} />
+                                <Route path="/view-ecg" element={<ECGSelector />} />
+                                <Route path="/view-ecg/:filename" element={<ECGImageViewer />} /> {/* New route */}
+                            </Routes>
+                        </main>
+                    </div>
+                </ECGProvider>
+            </DndProvider>
+        </ThemeProvider>
     );
 }
 
