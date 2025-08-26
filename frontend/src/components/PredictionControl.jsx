@@ -14,7 +14,7 @@ const PredictionControl = ({ droppedECG, onDrop }) => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post('http://localhost:8000/predict', {
+      const response = await axios.post('http://${API_BASE_URL}/predict', {
         filename: droppedECG.filename,
       });
       setPrediction(response.data.label);

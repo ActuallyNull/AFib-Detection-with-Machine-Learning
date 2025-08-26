@@ -27,7 +27,7 @@ services:
       - "8000:8000"
     volumes:
       - ./model.keras:/app/model.keras:ro
-      - ./data:/app/data:ro
+      - ./showcase_ecgs:/app/showcase_ecgs:rw
     environment:
       - PYTHONPATH=/app
     restart: unless-stopped

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Upload, Trash2, Pencil } from 'lucide-react';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const AdminPanel = () => {
   const [predictionShowcaseECGs, setPredictionShowcaseECGs] = useState([]);
@@ -16,7 +17,7 @@ const AdminPanel = () => {
 
   const fetchPredictionShowcaseECGs = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/showcase-ecgs?folder_type=prediction');
+      const response = await axios.get(`${API_BASE_URL}/showcase-ecgs?folder_type=prediction`);
       setPredictionShowcaseECGs(response.data);
     } catch (error) {
       console.error('Error fetching prediction showcase ECGs:', error);
@@ -26,7 +27,7 @@ const AdminPanel = () => {
 
   const fetchViewerShowcaseECGs = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/showcase-ecgs?folder_type=viewer');
+      const response = await axios.get(`http://${API_BASE_URL}/showcase-ecgs?folder_type=viewer`);
       setViewerShowcaseECGs(response.data);
     } catch (error) {
       console.error('Error fetching viewer showcase ECGs:', error);
@@ -48,10 +49,10 @@ const AdminPanel = () => {
 
     if (folderType === 'prediction') {
       filesToUpload = selectedPredictionFiles;
-      uploadEndpoint = 'http://localhost:8000/admin/upload-prediction-ecg';
+      uploadEndpoint = `http://${API_BASE_URL}/admin/upload-prediction-ecg`;
     } else if (folderType === 'viewer') {
       filesToUpload = selectedViewerFiles;
-      uploadEndpoint = 'http://localhost:8000/admin/upload-viewer-ecg';
+      uploadEndpoint = `http://${API_BASE_URL}/admin/upload-viewer-ecg`;
     }
 
     if (filesToUpload.length === 0) {
@@ -87,7 +88,7 @@ const AdminPanel = () => {
   const handleDelete = async (filename, folderType) => {
     if (window.confirm(`Are you sure you want to delete ${filename} from ${folderType} showcase?`)) {
       try {
-        await axios.delete(`http://localhost:8000/admin/delete-showcase-ecg/${filename}?folder_type=${folderType}`);
+        await axios.delete(`http://${API_BASE_URL}/admin/delete-showcase-ecg/${filename}?folder_type=${folderType}`);
         setMessage(`${filename} deleted successfully from ${folderType} showcase.`);
         if (folderType === 'prediction') {
           fetchPredictionShowcaseECGs();
@@ -106,7 +107,7 @@ const handleRename = async (oldFilename, folderType) => {
   if (newFilename && newFilename.trim() !== '') {
     try {
       // Append folderType as query param
-      await axios.put(`http://localhost:8000/admin/rename-showcase-ecg/${oldFilename}?folder_type=${folderType}`, {
+      await axios.put(`http://${API_BASE_URL}/admin/rename-showcase-ecg/${oldFilename}?folder_type=${folderType}`, {
         new_filename: newFilename
       });
 

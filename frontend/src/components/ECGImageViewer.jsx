@@ -145,7 +145,7 @@ const ECGImageViewer = () => {
     const fetchECG = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:8000/showcase-ecgs?folder_type=viewer');
+        const response = await axios.get(`http://${API_BASE_URL}/showcase-ecgs?folder_type=viewer`);
         const foundEcg = response.data.find(ecg => ecg.filename === filename);
         if (foundEcg) {
           setEcgData(foundEcg);
