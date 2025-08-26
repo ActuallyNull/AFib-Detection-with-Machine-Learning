@@ -56,7 +56,7 @@ TARGET_FS = 300
 TARGET_DURATION_SEC = 10
 TARGET_SAMPLES = TARGET_FS * TARGET_DURATION_SEC
 
-SHOWCASE_ECG_BASE_DIR = "/app/showcase_ecgs"
+SHOWCASE_ECG_BASE_DIR = "../showcase_ecgs"
 PREDICTION_SHOWCASE_DIR = os.path.join(SHOWCASE_ECG_BASE_DIR, "prediction_showcase")
 VIEWER_SHOWCASE_DIR = os.path.join(SHOWCASE_ECG_BASE_DIR, "viewer_showcase")
 
@@ -97,20 +97,10 @@ def load_model():
     global model, model_loaded
     try:
         logger.info("Loading ECG classification model...")
-        try:
-            model = keras.models.load_model(
-                'app/model.keras', custom_objects={'SparseCategoricalFocalLoss': SparseCategoricalFocalLoss}
-            )
-        except:
-            try:
-                model = keras.models.load_model(
-                    './model.keras', custom_objects={'SparseCategoricalFocalLoss': SparseCategoricalFocalLoss}
-                )
-            except:
-                model = keras.models.load_model(
-                    '../model.keras', custom_objects={'SparseCategoricalFocalLoss': SparseCategoricalFocalLoss}
-                
-                )
+        model = keras.models.load_model(
+            '../model.keras',
+            custom_objects={'SparseCategoricalFocalLoss': SparseCategoricalFocalLoss}
+        )
         model_loaded = True
         logger.info("Model loaded successfully")
         return True

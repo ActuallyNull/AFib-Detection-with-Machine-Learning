@@ -5,17 +5,15 @@ services:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://localhost:8000
     ports:
       - "3000:80"
     depends_on:
       - backend
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:3000/api
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -29,7 +27,7 @@ services:
       - "8000:8000"
     volumes:
       - ./model.keras:/app/model.keras:ro
-      - ./showcase_ecgs:/app/showcase_ecgs:rw
+      - ./data:/app/data:ro
     environment:
       - PYTHONPATH=/app
     restart: unless-stopped
