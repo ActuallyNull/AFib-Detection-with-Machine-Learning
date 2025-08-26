@@ -29,18 +29,18 @@ docker-compose logs -f
 ### 2. Local Development
 
 #### Frontend
-```bash
+   ```bash
 cd frontend
 npm install
 npm run dev
-```
+   ```
 
 #### Backend
-```bash
+   ```bash
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+   ```
 
 ## ☁️ Cloud Deployment
 
@@ -49,13 +49,13 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 #### Option 1: AWS ECS with Fargate
 
 1. **Create ECR repositories:**
-```bash
+   ```bash
 aws ecr create-repository --repository-name ecg-frontend
 aws ecr create-repository --repository-name ecg-backend
-```
+   ```
 
 2. **Build and push images:**
-```bash
+   ```bash
 # Frontend
 docker build -t ecg-frontend ./frontend
 docker tag ecg-frontend:latest $AWS_ACCOUNT.dkr.ecr.$REGION.amazonaws.com/ecg-frontend:latest

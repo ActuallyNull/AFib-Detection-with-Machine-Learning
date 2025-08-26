@@ -101,25 +101,29 @@ const AdminPanel = () => {
     }
   };
 
-  const handleRename = async (oldFilename, folderType) => {
-    const newFilename = prompt(`Enter new name for ${oldFilename}:`);
-    if (newFilename && newFilename.trim() !== '') {
-      try {
-        await axios.put(`http://localhost:8000/admin/rename-showcase-ecg/${oldFilename}`, {
-          new_filename: newFilename
-        });
-        setMessage(`${oldFilename} renamed to ${newFilename} successfully.`);
-        if (folderType === 'prediction') {
-          fetchPredictionShowcaseECGs();
-        } else if (folderType === 'viewer') {
-          fetchViewerShowcaseECGs();
-        }
-      } catch (error) {
-        console.error(`Error renaming ${oldFilename}:`, error);
-        setMessage(`Error renaming ${oldFilename}: ${error.response?.data?.detail || error.message}`);
+const handleRename = async (oldFilename, folderType) => {
+  const newFilename = prompt(`Enter new name for ${oldFilename}:`);
+  if (newFilename && newFilename.trim() !== '') {
+    try {
+      // Append folderType as query param
+      await axios.put(`http://localhost:8000/admin/rename-showcase-ecg/${oldFilename}?folder_type=${folderType}`, {
+        new_filename: newFilename
+      });
+
+      setMessage(`${oldFilename} renamed to ${newFilename} successfully.`);
+
+      if (folderType === 'prediction') {
+        fetchPredictionShowcaseECGs();
+      } else if (folderType === 'viewer') {
+        fetchViewerShowcaseECGs();
       }
+    } catch (error) {
+      console.error(`Error renaming ${oldFilename}:`, error);
+      setMessage(`Error renaming ${oldFilename}: ${error.response?.data?.detail || error.message}`);
     }
-  };
+  }
+};
+
 
   return (
     <div className="container mx-auto p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg">

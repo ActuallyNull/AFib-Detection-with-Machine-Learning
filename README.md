@@ -67,18 +67,18 @@ A modern web application for AI-powered ECG classification and arrhythmia detect
 ### Local Development
 
 #### Frontend Development
-```bash
+   ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
 #### Backend Development
-```bash
+   ```bash
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+   ```
 
 ## 📁 File Structure
 
@@ -119,22 +119,22 @@ The application expects a `model.keras` file in the root directory. The model sh
 ## 📊 API Usage
 
 ### Single File Prediction
-```bash
-curl -X POST "http://localhost:8000/predict" \
-  -H "Content-Type: multipart/form-data" \
+   ```bash
+   curl -X POST "http://localhost:8000/predict" \
+        -H "Content-Type: multipart/form-data" \
   -F "file=@ecg_data.mat"
-```
+   ```
 
 ### Batch Prediction
-```bash
+   ```bash
 curl -X POST "http://localhost:8000/batch-predict" \
-  -H "Content-Type: multipart/form-data" \
+        -H "Content-Type: multipart/form-data" \
   -F "files=@file1.mat" \
-  -F "files=@file2.csv"
-```
+        -F "files=@file2.csv"
+   ```
 
 ### Preprocess for Visualization
-```bash
+   ```bash
 curl -X POST "http://localhost:8000/preprocess" \
   -H "Content-Type: multipart/form-data" \
   -F "file=@ecg_data.mat"

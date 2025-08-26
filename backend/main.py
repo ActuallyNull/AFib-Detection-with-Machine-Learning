@@ -19,6 +19,7 @@ import uvicorn
 from pydantic import BaseModel
 import logging
 from focal_loss import SparseCategoricalFocalLoss
+import re
 
 # -----------------------------
 # Config & Logging
@@ -86,6 +87,12 @@ class RenameRequest(BaseModel):
 # -----------------------------
 # Utilities
 # -----------------------------
+
+def sanitize_wfdb_name(name: str) -> str:
+    # Only allow letters, numbers, and underscores
+    return re.sub(r'[^A-Za-z0-9_]', '_', name)
+
+
 def load_model():
     global model, model_loaded
     try:
@@ -173,27 +180,23 @@ def preprocess_ecg(signal_data: np.ndarray, fs: float) -> np.ndarray:
 # Robust WFDB loaders
 # -----------------------------
 def _wfdb_load_base(base_path_no_ext: str):
-    """Load waveform and fs from a WFDB base path (no extension). Prefers rdsamp."""
+    """Load waveform and fs from a WFDB base path (no extension). Prefers .mat files first."""
     try:
-        # rdsamp returns (signals, fields)
-        sig, fields = wfdb.rdsamp(base_path_no_ext)
-        fs = float(fields.get('fs')) if isinstance(fields, dict) else float(fields.fs)
-        # Use first channel (lead) as in training
-        if sig.ndim == 2:
-            sig1 = sig[:, 0]
-        else:
-            sig1 = sig.squeeze()
+        # Try rdrecord first (can read .mat)
+        rec = wfdb.rdrecord(base_path_no_ext)
+        fs = float(rec.fs)
+        sig = rec.p_signal
+        sig1 = sig[:, 0] if sig.ndim == 2 else sig.squeeze()
         return sig1.astype(np.float32), fs
     except Exception as e1:
-        # Fallback to rdrecord (p_signal)
+        # Fallback to rdsamp (classic .dat)
         try:
-            rec = wfdb.rdrecord(base_path_no_ext)
-            fs = float(rec.fs)
-            sig = rec.p_signal
+            sig, fields = wfdb.rdsamp(base_path_no_ext)
+            fs = float(fields.get('fs')) if isinstance(fields, dict) else float(fields.fs)
             sig1 = sig[:, 0] if sig.ndim == 2 else sig.squeeze()
             return sig1.astype(np.float32), fs
         except Exception as e2:
-            raise RuntimeError(f"WFDB read failed (rdsamp: {e1}; rdrecord: {e2})")
+            raise RuntimeError(f"WFDB read failed (rdrecord: {e1}; rdsamp: {e2})")
 
 def _infer_base_path(temp_dir: str, any_filename: str) -> str:
     """Given a directory and any filename ('name.ext'), return base path 'dir/name'."""
@@ -548,19 +551,25 @@ async def get_showcase_ecgs(folder_type: str = "prediction"):
 @app.put("/admin/rename-showcase-ecg/{old_filename}")
 async def rename_showcase_ecg(old_filename: str, body: RenameRequest):
     new_name = body.new_filename
-
-    base_path = PREDICTION_SHOWCASE_DIR
+    new_name = sanitize_wfdb_name(new_name)
     old_base, _ = os.path.splitext(old_filename)
 
-    old_mat = os.path.join(base_path, f"{old_base}.mat")
-    old_hea = os.path.join(base_path, f"{old_base}.hea")
-    new_mat = os.path.join(base_path, f"{new_name}.mat")
-    new_hea = os.path.join(base_path, f"{new_name}.hea")
+    # Try both folders
+    candidate_folders = [PREDICTION_SHOWCASE_DIR, VIEWER_SHOWCASE_DIR]
+    target_folder = None
+    for folder in candidate_folders:
+        old_mat = os.path.join(folder, f"{old_base}.dat")
+        old_hea = os.path.join(folder, f"{old_base}.hea")
+        if os.path.exists(old_mat) and os.path.exists(old_hea):
+            target_folder = folder
+            break
 
-    if not os.path.exists(old_mat) or not os.path.exists(old_hea):
-        raise HTTPException(status_code=404, detail="Original files not found")
+    if not target_folder:
+        raise HTTPException(status_code=404, detail=f"Files for '{old_filename}' not found in any showcase folder")
 
     # Rename files
+    new_mat = os.path.join(target_folder, f"{new_name}.dat")
+    new_hea = os.path.join(target_folder, f"{new_name}.hea")
     os.rename(old_mat, new_mat)
     os.rename(old_hea, new_hea)
 
@@ -571,7 +580,7 @@ async def rename_showcase_ecg(old_filename: str, body: RenameRequest):
     with open(new_hea, "w") as f:
         f.writelines(updated_lines)
 
-    return {"message": f"Renamed {old_base} to {new_name} successfully"}
+    return {"message": f"Renamed {old_base} to {new_name} successfully in folder '{os.path.basename(target_folder)}'"}
 
 
 @app.delete("/admin/delete-showcase-ecg/{filename}")
