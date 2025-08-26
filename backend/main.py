@@ -97,10 +97,20 @@ def load_model():
     global model, model_loaded
     try:
         logger.info("Loading ECG classification model...")
-        model = keras.models.load_model(
-            '/app/model.keras',
-            custom_objects={'SparseCategoricalFocalLoss': SparseCategoricalFocalLoss}
-        )
+        try:
+            model = keras.models.load_model(
+                'app/model.keras', custom_objects={'SparseCategoricalFocalLoss': SparseCategoricalFocalLoss}
+            )
+        except:
+            try:
+                model = keras.models.load_model(
+                    './model.keras', custom_objects={'SparseCategoricalFocalLoss': SparseCategoricalFocalLoss}
+                )
+            except:
+                model = keras.models.load_model(
+                    '../model.keras', custom_objects={'SparseCategoricalFocalLoss': SparseCategoricalFocalLoss}
+                
+                )
         model_loaded = True
         logger.info("Model loaded successfully")
         return True
