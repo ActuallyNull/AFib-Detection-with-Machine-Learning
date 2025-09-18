@@ -16,6 +16,3 @@ services:
     name: frontend
     runtime: docker
     dockerfilePath: ./frontend/Dockerfile
-    rewrites:
-      - source: /api/:path*
-        destination: http://backend:8000/:path*
