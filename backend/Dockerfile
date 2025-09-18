@@ -20,8 +20,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Copy model file (if exists)
+# Copy model file
 COPY ../model.keras ./model.keras
+
+# Copy showcase files
+COPY ../showcase_ecgs ./showcase_ecgs/
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

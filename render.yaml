@@ -1,0 +1,26 @@
+
+services:
+  # Backend Service (FastAPI)
+  - type: web
+    name: backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    healthCheck:
+      path: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9
+      - key: PORT
+        value: 8000
+
+  # Frontend Service (React)
+  - type: web
+    name: frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: backend
+          property: url
