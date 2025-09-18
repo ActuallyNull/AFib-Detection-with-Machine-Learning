@@ -5,8 +5,6 @@ services:
     name: backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
-    healthCheck:
-      path: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.9
