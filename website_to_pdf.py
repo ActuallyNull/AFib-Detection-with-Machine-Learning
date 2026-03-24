@@ -5,14 +5,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import portrait
 
 url_downloads = [
- "https://github.com/RayanZamzaoui/afib-arrhythmia-ml-model/commit/0d30bde6b681393bd86aee7086ab6ac0e394e691",
- "https://github.com/RayanZamzaoui/afib-arrhythmia-ml-model/commit/ac35ccb46cfd0e5034ec8a53ed2e3934ab55b5f3",
- "https://github.com/RayanZamzaoui/afib-arrhythmia-ml-model/commit/849e037155d33fbfc27d3bf79a79773d9f9e0ba0",
- "https://github.com/RayanZamzaoui/afib-arrhythmia-ml-model/commit/7a0765bd63470fd070405f0f56690af1dcbbbce6",
- "https://github.com/RayanZamzaoui/afib-arrhythmia-ml-model/commit/1b17f14fa27ce48826bf801aba0aefe63549e2d8",
- "https://github.com/RayanZamzaoui/afib-arrhythmia-ml-model/commit/3cad777940729e1c32c6e5d491023cf5f3ed17e3",
- "https://github.com/RayanZamzaoui/afib-arrhythmia-ml-model/commit/3cecf5975ed7537083e76b4e9bfbb5f32c56fe1e",
- "https://github.com/RayanZamzaoui/afib-arrhythmia-ml-model/commit/0269252aa68014aafb3f26fb1360bb2a38f5a3a1"   
+    "https://github.com/ActuallyNull/AFib-Detection-with-Machine-Learning/commit/dd826a02d9ff6eb2c264ca8c7e47ab213a601adc"
 ]
 
 async def save_fullpage_pdf(url, output_file="website.pdf"):

@@ -13,24 +13,6 @@ import numpy as np
 from data_generator import ECGDataGenerator
 from data_augmentor import ECG_Augmentor
 
-X_train, y_train, X_val, y_val, X_test, y_test, le = create_train_val_test_splits()
-
-train_augmentor = ECG_Augmentor(fs=300, strong=True)
-train_gen = ECGDataGenerator(X_train, y_train, batch_size=64, augmentor=train_augmentor, shuffle=True)
-val_gen = ECGDataGenerator(X_val, y_val, batch_size=64, augmentor=None, shuffle=False)
-
-unique, counts = np.unique(y_train, return_counts=True)
-print("Class distribution in y_train:", dict(zip(unique, counts)))
-
-weights = compute_class_weight('balanced', classes=np.array([0,1,2]), y=y_train)
-class_weights = dict(enumerate(weights))
-class_weights[2] *= 1.3 # give more weight to other arrhythmia since it gets misclassfied a lot more
-
-callback = [
-    EarlyStopping(monitor='val_loss', patience=7, verbose=1, restore_best_weights=True),
-    ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-6, verbose=1)
-]
-
 def conv_block(x, filters, kernel_size, pool_size=2, dropout=0.2):
     x = layers.Conv1D(filters, kernel_size, padding='same')(x)
     x = layers.BatchNormalization()(x)
@@ -90,68 +72,90 @@ def ecg_cnn(input_length, num_classes=3): # 0: afib, 1: normal, 2: other arrhyth
     model = models.Model(inputs, outputs)
     return model
 
-test_gen = ECGDataGenerator(X_test, y_test, batch_size=64, augmentor=None, shuffle=False)
+def main():
+    X_train, y_train, X_val, y_val, X_test, y_test, le = create_train_val_test_splits()
 
-n_models = 3
-ensemble_preds = np.zeros((len(y_test), 3))  # 3 = num_classes
-ensemble_test_acc = 0
+    train_augmentor = ECG_Augmentor(fs=300, strong=True)
+    train_gen = ECGDataGenerator(X_train, y_train, batch_size=64, augmentor=train_augmentor, shuffle=True)
+    val_gen = ECGDataGenerator(X_val, y_val, batch_size=64, augmentor=None, shuffle=False)
 
-for seed in range(n_models):
-    print(f"\nTraining ensemble model {seed+1}/{n_models}")
-    tf.keras.utils.set_random_seed(seed)
-    model = ecg_cnn(input_length=3000)
-    model.compile(
-        optimizer='adam',
-        loss=SparseCategoricalFocalLoss(gamma=2),
-        metrics=['accuracy']
-    )
-    model.fit(
-        train_gen,
-        epochs=100,
-        callbacks=callback,
-        class_weight=class_weights,
-        validation_data=val_gen,
-        verbose=0  # Suppress output for brevity
-    )
+    unique, counts = np.unique(y_train, return_counts=True)
+    print("Class distribution in y_train:", dict(zip(unique, counts)))
 
-    test_loss, test_acc = model.evaluate(test_gen)
-    ensemble_test_acc += test_acc
-    # Predict on test set
-    y_pred = model.predict(test_gen)
-    ensemble_preds += y_pred
+    weights = compute_class_weight('balanced', classes=np.array([0,1,2]), y=y_train)
+    class_weights = dict(enumerate(weights))
+    class_weights[2] *= 1.3 # give more weight to other arrhythmia since it gets misclassfied a lot more
 
-ensemble_preds /= n_models
-ensemble_pred_classes = ensemble_preds.argmax(axis=1)
+    callback = [
+        EarlyStopping(monitor='val_loss', patience=7, verbose=1, restore_best_weights=True),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-6, verbose=1)
+    ]
 
-ensemble_test_acc /= n_models
-print(f"Average test accuracy: {ensemble_test_acc:.4f}")
+    test_gen = ECGDataGenerator(X_test, y_test, batch_size=64, augmentor=None, shuffle=False)
 
-print("\nEnsemble Confusion Matrix:")
-print(confusion_matrix(y_test, ensemble_pred_classes))
-print("Ensemble Classification Report:")
-print(classification_report(y_test, ensemble_pred_classes))
+    n_models = 3
+    ensemble_preds = np.zeros((len(y_test), 3))  # 3 = num_classes
+    ensemble_test_acc = 0
 
-# ROC and PR curves for ensemble
-y_test_binary = label_binarize(y_test, classes=[0,1,2])
+    for seed in range(n_models):
+        print(f"\nTraining ensemble model {seed+1}/{n_models}")
+        tf.keras.utils.set_random_seed(seed)
+        model = ecg_cnn(input_length=3000)
+        model.compile(
+            optimizer='adam',
+            loss=SparseCategoricalFocalLoss(gamma=2),
+            metrics=['accuracy']
+        )
+        model.fit(
+            train_gen,
+            epochs=100,
+            callbacks=callback,
+            class_weight=class_weights,
+            validation_data=val_gen,
+            verbose=0  # Suppress output for brevity
+        )
 
-for i in range(ensemble_preds.shape[1]):
-    RocCurveDisplay.from_predictions(y_test_binary[:,i], ensemble_preds[:,i], name=f"Class {i}")
+        test_loss, test_acc = model.evaluate(test_gen)
+        ensemble_test_acc += test_acc
+        # Predict on test set
+        y_pred = model.predict(test_gen)
+        ensemble_preds += y_pred
 
-plt.plot([0,1], [0,1], 'k--')
-plt.xlabel("FPR (False Positive Rate)")
-plt.ylabel("TPR (True Positive Rate)")
-plt.title("Ensemble OvR ROC Curve")
-plt.legend()
-plt.show()
+    ensemble_preds /= n_models
+    ensemble_pred_classes = ensemble_preds.argmax(axis=1)
 
-plt.figure(figsize=(8, 6))
-for i in range(ensemble_preds.shape[1]):
-    precision, recall, _ = precision_recall_curve(y_test_binary[:, i], ensemble_preds[:, i])
-    auc_score = auc(recall, precision)
-    plt.plot(recall, precision, label=f'Class {i} (AUC = {auc_score:.2f})')
+    ensemble_test_acc /= n_models
+    print(f"Average test accuracy: {ensemble_test_acc:.4f}")
 
-plt.xlabel('Recall')
-plt.ylabel('Precision')
-plt.title('Ensemble Precision-Recall Curve (OvR)')
-plt.legend()
-plt.show()
+    print("\nEnsemble Confusion Matrix:")
+    print(confusion_matrix(y_test, ensemble_pred_classes))
+    print("Ensemble Classification Report:")
+    print(classification_report(y_test, ensemble_pred_classes))
+
+    # ROC and PR curves for ensemble
+    y_test_binary = label_binarize(y_test, classes=[0,1,2])
+
+    for i in range(ensemble_preds.shape[1]):
+        RocCurveDisplay.from_predictions(y_test_binary[:,i], ensemble_preds[:,i], name=f"Class {i}")
+
+    plt.plot([0,1], [0,1], 'k--')
+    plt.xlabel("FPR (False Positive Rate)")
+    plt.ylabel("TPR (True Positive Rate)")
+    plt.title("Ensemble OvR ROC Curve")
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(8, 6))
+    for i in range(ensemble_preds.shape[1]):
+        precision, recall, _ = precision_recall_curve(y_test_binary[:, i], ensemble_preds[:, i])
+        auc_score = auc(recall, precision)
+        plt.plot(recall, precision, label=f'Class {i} (AUC = {auc_score:.2f})')
+
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Ensemble Precision-Recall Curve (OvR)')
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    main()
